@@ -1,0 +1,30 @@
+declare query_user_id = '<salesforce_user_id>';
+declare start_period = '2025-01-01';  -- including Janurary to account for PERF starting earlier
+declare end_period = '2026-02-01';
+
+-- get ASQs for FY26
+with latest_asq_details as (
+  SELECT
+    *,
+    ROW_NUMBER() OVER (PARTITION BY approval_request_name ORDER BY snapshot_date DESC) AS row_num
+  FROM
+    main.gtm_silver.approval_request_detail_history
+  where snapshot_date between start_period and end_period
+)
+select
+approval_request_name,
+last_modified_date,
+actual_completion_date,
+account_name,
+title,
+status,
+support_type,
+request_description,
+technical_specialization,
+request_status_notes
+from latest_asq_details
+where row_num = 1
+and owner_user_id = query_user_id
+and coalesce(actual_completion_date, last_modified_date) between start_period and end_period
+and status <> 'Rejected'
+order by approval_request_name;

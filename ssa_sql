@@ -1,0 +1,33 @@
+SELECT
+sa.sa_manager,
+sa.ae_manager,sa.ae_slm,
+sts.*,
+case when sts.support_sub_type = 'White-Glove Deployment Support' then 'Y' else sts.importance_flag end as topn_flag,
+sts.tech_spec_mod as tech_specialization,
+DATEDIFF(least(sts.end_date,current_date()), sts.start_date) as ticket_duration,
+case when DATEDIFF(least(sts.end_date,current_date()), sts.start_date)<=7 then '1-Below 7 Days'
+when DATEDIFF(least(sts.end_date,current_date()), sts.start_date) between 7 and 15 then '2-7-15 Days' 
+when DATEDIFF(least(sts.end_date,current_date()), sts.start_date) between 15 and 30 then '3-15-30 Days'
+when DATEDIFF(least(sts.end_date,current_date()), sts.start_date) between 30 and 60 then '4-30-60 Days'
+else '5-Above 60 Days' end ticket_duration_cohort,
+concat(concat(lower(nvl(sts.account_name,'')),' ',lower(nvl(sts.ticket_owner,'')),' ',lower(nvl(tech_spec,'')),' ',lower(nvl(ticket_title,'')),' ',lower(nvl(ticket_desc,'')),' ',lower(nvl(status_notes,''))),' ',lower(nvl(closure_notes,''))) as search_text,
+nvl(NULL,100) as bu_rank,
+case when (((sts.BU1 = 'DNB' and nvl(NULL,100)<=35)
+            or (sts.BU1 = 'EE & Startup' and nvl(NULL,100)<=15)
+          )
+          or sts.support_sub_type = 'White-Glove Deployment Support' 
+          or sts.monthly_dollar_dbu>= 20000)
+          and sts.estimated_days>=2
+          then 'Y' else 'N' end as top_account_flag,
+          len(nvl(status_notes,' ')) as status_len,
+case when len(nvl(status_notes,' '))<100 then 'Green'
+else 
+case when (ticket_summary) like '%Status Color: Red%' then 'Red'
+when (ticket_summary) like '%Status Color: Yellow%' then 'Yellow'
+else 'Green' end
+end as status_color
+FROM 
+main.field_ssa_lakehouse.ssa_tickets_summary sts
+INNER JOIN main.field_ssa_lakehouse.ssa_accounts sa on sts.account_id = sa.account_id and sa.bu1 = 'CAN'
+WHERE 
+ssa_manager = 'Chris Chalcraft' and fiscal_year_quarter like '2026%' and ticket_owner = 'Scott McKean'

@@ -1,0 +1,56 @@
+-- UCOs that are not in the Onboarding stage, but their onboarding date is within 60 days
+SELECT
+  business_unit,
+  sales_subregion_level_1,
+  sales_subregion_level_2,
+  sales_subregion_level_3,
+  account_name,
+  CONCAT(
+    '<a href="https://databricks.lightning.force.com/lightning/r/Account/',
+    account_id,
+    '/view" target="_blank">',
+    account_name,
+    '</a>'
+  ) AS account_name_linked,
+  account_id,
+  usecase_name,
+  CONCAT(
+    '<a href="https://databricks.lightning.force.com/lightning/r/UseCase__c/',
+    usecase_id,
+    '/view" target="_blank">',
+    usecase_name,
+    '</a>'
+  ) AS usecase_name_linked,
+  usecase_id,
+  stage_name_ui,
+  account_executive,
+  account_solution_architect,
+  sales_manager,
+  datediff(last_day(target_onboarding_date), CURRENT_DATE()) as days_until_onboarding,
+  target_onboarding_date,
+  datediff(last_day(target_live_date), CURRENT_DATE()) as days_until_live,
+  target_live_date,
+  days_in_stage,
+  days_since_last_modified,
+  last_modified_date,
+  use_case_in_plan,
+  estimated_monthly_dollar_dbus,
+  stage,
+  account_dsa,
+  dsa_manager,
+  field_manager
+FROM
+  main.gtm_data.core_usecase_curated
+WHERE
+  snapshot_date = (
+    SELECT
+      MAX(snapshot_date)
+    FROM
+      main.gtm_data.core_usecase_curated
+  )
+  -- AND stage_name_ui IN ("Scoping", "Potential", "Evaluating", "Evaluation", "Validating")
+  AND datediff(last_day(target_onboarding_date), CURRENT_DATE()) < 60
+  AND sales_subregion_level_1 = 'CAN'
+ORDER BY
+  account_executive,
+  estimated_monthly_dollar_dbus DESC
